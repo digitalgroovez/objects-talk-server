@@ -1,0 +1,623 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>Objects Talk – Content Agent</title>
+<link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;700;800&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet"/>
+<style>
+  :root {
+    --bg: #0a0a0f;
+    --surface: #13131a;
+    --card: #1a1a26;
+    --border: #2a2a3d;
+    --accent: #f0c040;
+    --accent2: #7b5ea7;
+    --text: #e8e8f0;
+    --muted: #7a7a9a;
+    --green: #4ade80;
+    --red: #f87171;
+  }
+
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: 'DM Mono', monospace;
+    min-height: 100vh;
+    padding: 0;
+  }
+
+  /* Animated background */
+  body::before {
+    content: '';
+    position: fixed;
+    inset: 0;
+    background: radial-gradient(ellipse at 20% 20%, rgba(123,94,167,0.12) 0%, transparent 60%),
+                radial-gradient(ellipse at 80% 80%, rgba(240,192,64,0.08) 0%, transparent 60%);
+    pointer-events: none;
+    z-index: 0;
+  }
+
+  .container {
+    max-width: 860px;
+    margin: 0 auto;
+    padding: 40px 20px 80px;
+    position: relative;
+    z-index: 1;
+  }
+
+  /* Header */
+  .header {
+    text-align: center;
+    margin-bottom: 48px;
+  }
+
+  .header .badge {
+    display: inline-block;
+    background: rgba(240,192,64,0.12);
+    border: 1px solid rgba(240,192,64,0.3);
+    color: var(--accent);
+    font-size: 11px;
+    letter-spacing: 3px;
+    text-transform: uppercase;
+    padding: 6px 16px;
+    border-radius: 100px;
+    margin-bottom: 16px;
+  }
+
+  .header h1 {
+    font-family: 'Syne', sans-serif;
+    font-size: clamp(2rem, 6vw, 3.2rem);
+    font-weight: 800;
+    line-height: 1.1;
+    background: linear-gradient(135deg, #f0c040 0%, #e0a0ff 60%, #7b5ea7 100%);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+  }
+
+  .header p {
+    color: var(--muted);
+    margin-top: 12px;
+    font-size: 13px;
+    letter-spacing: 0.5px;
+  }
+
+  /* Input section */
+  .input-card {
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: 16px;
+    padding: 28px;
+    margin-bottom: 24px;
+  }
+
+  .input-card label {
+    display: block;
+    font-size: 11px;
+    letter-spacing: 2px;
+    text-transform: uppercase;
+    color: var(--accent);
+    margin-bottom: 12px;
+  }
+
+  .input-row {
+    display: flex;
+    gap: 12px;
+  }
+
+  .input-card input {
+    flex: 1;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    color: var(--text);
+    font-family: 'DM Mono', monospace;
+    font-size: 14px;
+    padding: 14px 18px;
+    outline: none;
+    transition: border-color 0.2s;
+  }
+
+  .input-card input:focus {
+    border-color: var(--accent);
+  }
+
+  .input-card input::placeholder { color: var(--muted); }
+
+  .btn-generate {
+    background: var(--accent);
+    color: #0a0a0f;
+    border: none;
+    border-radius: 10px;
+    font-family: 'Syne', sans-serif;
+    font-weight: 700;
+    font-size: 14px;
+    padding: 14px 28px;
+    cursor: pointer;
+    letter-spacing: 0.5px;
+    transition: all 0.2s;
+    white-space: nowrap;
+  }
+
+  .btn-generate:hover { background: #ffe066; transform: translateY(-1px); }
+  .btn-generate:disabled { opacity: 0.5; cursor: not-allowed; transform: none; }
+
+  /* Hint chips */
+  .hints {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    margin-top: 14px;
+  }
+
+  .hint-chip {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 100px;
+    font-size: 11px;
+    color: var(--muted);
+    padding: 5px 12px;
+    cursor: pointer;
+    transition: all 0.15s;
+  }
+
+  .hint-chip:hover {
+    border-color: var(--accent);
+    color: var(--accent);
+  }
+
+  /* Loading */
+  .loading {
+    display: none;
+    text-align: center;
+    padding: 48px;
+  }
+
+  .loading.active { display: block; }
+
+  .spinner {
+    width: 40px; height: 40px;
+    border: 3px solid var(--border);
+    border-top-color: var(--accent);
+    border-radius: 50%;
+    animation: spin 0.8s linear infinite;
+    margin: 0 auto 16px;
+  }
+
+  @keyframes spin { to { transform: rotate(360deg); } }
+
+  .loading p {
+    color: var(--muted);
+    font-size: 13px;
+    animation: pulse 1.5s ease-in-out infinite;
+  }
+
+  @keyframes pulse { 0%,100%{opacity:0.5} 50%{opacity:1} }
+
+  /* Results */
+  .results { display: none; }
+  .results.active { display: block; }
+
+  .section-label {
+    font-size: 10px;
+    letter-spacing: 3px;
+    text-transform: uppercase;
+    color: var(--muted);
+    margin-bottom: 16px;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+  }
+
+  .section-label::after {
+    content: '';
+    flex: 1;
+    height: 1px;
+    background: var(--border);
+  }
+
+  .result-card {
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: 14px;
+    margin-bottom: 16px;
+    overflow: hidden;
+    transition: border-color 0.2s;
+  }
+
+  .result-card:hover { border-color: rgba(240,192,64,0.3); }
+
+  .result-card-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 14px 20px;
+    border-bottom: 1px solid var(--border);
+    background: rgba(255,255,255,0.02);
+  }
+
+  .result-card-header .card-title {
+    font-family: 'Syne', sans-serif;
+    font-weight: 700;
+    font-size: 13px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+
+  .card-icon {
+    width: 24px; height: 24px;
+    border-radius: 6px;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 12px;
+  }
+
+  .icon-script { background: rgba(240,192,64,0.15); color: var(--accent); }
+  .icon-image { background: rgba(123,94,167,0.2); color: #c084fc; }
+  .icon-yt { background: rgba(248,113,113,0.15); color: var(--red); }
+  .icon-ig { background: rgba(74,222,128,0.15); color: var(--green); }
+  .icon-fb { background: rgba(96,165,250,0.15); color: #60a5fa; }
+  .icon-tt { background: rgba(251,113,133,0.15); color: #fb7185; }
+
+  .btn-copy {
+    background: transparent;
+    border: 1px solid var(--border);
+    border-radius: 7px;
+    color: var(--muted);
+    font-family: 'DM Mono', monospace;
+    font-size: 11px;
+    padding: 5px 12px;
+    cursor: pointer;
+    transition: all 0.15s;
+    display: flex;
+    align-items: center;
+    gap: 5px;
+  }
+
+  .btn-copy:hover { border-color: var(--accent); color: var(--accent); }
+  .btn-copy.copied { border-color: var(--green); color: var(--green); }
+
+  .result-content {
+    padding: 20px;
+    font-size: 13px;
+    line-height: 1.8;
+    color: var(--text);
+    white-space: pre-wrap;
+    word-break: break-word;
+  }
+
+  /* Tags styling */
+  .tags-container {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    padding: 16px 20px;
+  }
+
+  .tag {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 100px;
+    font-size: 11px;
+    color: var(--muted);
+    padding: 4px 12px;
+  }
+
+  /* New video button */
+  .btn-new {
+    display: block;
+    width: 100%;
+    background: transparent;
+    border: 1px dashed var(--border);
+    border-radius: 12px;
+    color: var(--muted);
+    font-family: 'Syne', sans-serif;
+    font-weight: 700;
+    font-size: 13px;
+    padding: 16px;
+    cursor: pointer;
+    margin-top: 24px;
+    transition: all 0.2s;
+    letter-spacing: 1px;
+  }
+
+  .btn-new:hover {
+    border-color: var(--accent);
+    color: var(--accent);
+    background: rgba(240,192,64,0.04);
+  }
+
+  /* Error */
+  .error-box {
+    display: none;
+    background: rgba(248,113,113,0.08);
+    border: 1px solid rgba(248,113,113,0.3);
+    border-radius: 12px;
+    padding: 16px 20px;
+    color: var(--red);
+    font-size: 13px;
+    margin-bottom: 16px;
+  }
+
+  .error-box.active { display: block; }
+
+  @media (max-width: 560px) {
+    .input-row { flex-direction: column; }
+  }
+</style>
+</head>
+<body>
+<div class="container">
+
+  <div class="header">
+    <div class="badge">🎬 Faceless Channel</div>
+    <h1>Objects Talk<br/>Content Agent</h1>
+    <p>Type an object → get script, image prompt, YouTube & Instagram content</p>
+  </div>
+
+  <!-- Input -->
+  <div class="input-card">
+    <label>Choose Your Object</label>
+    <div class="input-row">
+      <input type="text" id="objectInput" placeholder="e.g. A pencil, an old clock, a broken mirror..." />
+      <button class="btn-generate" id="generateBtn" onclick="generate()">Generate ⚡</button>
+    </div>
+    <div class="hints">
+      <span class="hint-chip" onclick="setHint('A vintage compass')">🧭 Vintage Compass</span>
+      <span class="hint-chip" onclick="setHint('A broken hourglass')">⌛ Broken Hourglass</span>
+      <span class="hint-chip" onclick="setHint('An old telephone')">📞 Old Telephone</span>
+      <span class="hint-chip" onclick="setHint('A cracked mirror')">🪞 Cracked Mirror</span>
+      <span class="hint-chip" onclick="setHint('A library book')">📚 Library Book</span>
+      <span class="hint-chip" onclick="setHint('A street lamp')">🏮 Street Lamp</span>
+    </div>
+  </div>
+
+  <!-- Error -->
+  <div class="error-box" id="errorBox"></div>
+
+  <!-- Loading -->
+  <div class="loading" id="loading">
+    <div class="spinner"></div>
+    <p id="loadingMsg">Generating your content...</p>
+  </div>
+
+  <!-- Results -->
+  <div class="results" id="results">
+
+    <div class="section-label">Generated Content</div>
+
+    <!-- Script -->
+    <div class="result-card">
+      <div class="result-card-header">
+        <div class="card-title">
+          <div class="card-icon icon-script">📝</div>
+          Video Script
+        </div>
+        <button class="btn-copy" onclick="copySection('scriptContent', this)">⎘ Copy</button>
+      </div>
+      <div class="result-content" id="scriptContent"></div>
+    </div>
+
+    <!-- Image Prompt -->
+    <div class="result-card">
+      <div class="result-card-header">
+        <div class="card-title">
+          <div class="card-icon icon-image">🎨</div>
+          Image Prompt
+        </div>
+        <button class="btn-copy" onclick="copySection('imageContent', this)">⎘ Copy</button>
+      </div>
+      <div class="result-content" id="imageContent"></div>
+    </div>
+
+    <!-- YouTube -->
+    <div class="result-card">
+      <div class="result-card-header">
+        <div class="card-title">
+          <div class="card-icon icon-yt">▶</div>
+          YouTube Shorts
+        </div>
+        <button class="btn-copy" onclick="copySection('ytContent', this)">⎘ Copy</button>
+      </div>
+      <div class="result-content" id="ytContent"></div>
+    </div>
+
+    <!-- Instagram -->
+    <div class="result-card">
+      <div class="result-card-header">
+        <div class="card-title">
+          <div class="card-icon icon-ig">◈</div>
+          Instagram Reels
+        </div>
+        <button class="btn-copy" onclick="copySection('igContent', this)">⎘ Copy</button>
+      </div>
+      <div class="result-content" id="igContent"></div>
+    </div>
+
+    <!-- Facebook -->
+    <div class="result-card">
+      <div class="result-card-header">
+        <div class="card-title">
+          <div class="card-icon icon-fb">f</div>
+          Facebook Reels
+        </div>
+        <button class="btn-copy" onclick="copySection('fbContent', this)">⎘ Copy</button>
+      </div>
+      <div class="result-content" id="fbContent"></div>
+    </div>
+
+    <!-- TikTok -->
+    <div class="result-card">
+      <div class="result-card-header">
+        <div class="card-title">
+          <div class="card-icon icon-tt">♪</div>
+          TikTok
+        </div>
+        <button class="btn-copy" onclick="copySection('ttContent', this)">⎘ Copy</button>
+      </div>
+      <div class="result-content" id="ttContent"></div>
+    </div>
+
+    <button class="btn-new" onclick="resetForm()">+ Generate Another Object</button>
+  </div>
+
+</div>
+
+<script>
+const loadingMessages = [
+  "Giving your object a voice...",
+  "Writing the script...",
+  "Crafting the image prompt...",
+  "Building your social content...",
+  "Almost ready..."
+];
+
+let msgInterval;
+
+function setHint(val) {
+  document.getElementById('objectInput').value = val;
+  document.getElementById('objectInput').focus();
+}
+
+function showLoading() {
+  document.getElementById('loading').classList.add('active');
+  document.getElementById('results').classList.remove('active');
+  document.getElementById('errorBox').classList.remove('active');
+  let i = 0;
+  msgInterval = setInterval(() => {
+    document.getElementById('loadingMsg').textContent = loadingMessages[i % loadingMessages.length];
+    i++;
+  }, 1800);
+}
+
+function hideLoading() {
+  document.getElementById('loading').classList.remove('active');
+  clearInterval(msgInterval);
+}
+
+function showError(msg) {
+  const box = document.getElementById('errorBox');
+  box.textContent = '⚠ ' + msg;
+  box.classList.add('active');
+}
+
+function resetForm() {
+  document.getElementById('results').classList.remove('active');
+  document.getElementById('objectInput').value = '';
+  document.getElementById('objectInput').focus();
+  window.scrollTo({ top: 0, behavior: 'smooth' });
+}
+
+// Copy with fallback for environments that block clipboard API
+function copySection(id, btn) {
+  const el = document.getElementById(id);
+  const text = el.textContent;
+
+  // Try modern clipboard API first
+  if (navigator.clipboard && navigator.clipboard.writeText) {
+    navigator.clipboard.writeText(text).then(() => {
+      showCopied(btn);
+    }).catch(() => {
+      fallbackCopy(text, btn);
+    });
+  } else {
+    fallbackCopy(text, btn);
+  }
+}
+
+function fallbackCopy(text, btn) {
+  // Create a temporary textarea and use execCommand
+  const ta = document.createElement('textarea');
+  ta.value = text;
+  ta.style.position = 'fixed';
+  ta.style.opacity = '0';
+  ta.style.top = '0';
+  ta.style.left = '0';
+  document.body.appendChild(ta);
+  ta.focus();
+  ta.select();
+  try {
+    document.execCommand('copy');
+    showCopied(btn);
+  } catch (e) {
+    btn.textContent = '✗ Failed';
+    setTimeout(() => { btn.textContent = '⎘ Copy'; }, 2000);
+  }
+  document.body.removeChild(ta);
+}
+
+function showCopied(btn) {
+  const original = btn.textContent;
+  btn.textContent = '✓ Copied!';
+  btn.classList.add('copied');
+  setTimeout(() => {
+    btn.textContent = '⎘ Copy';
+    btn.classList.remove('copied');
+  }, 2000);
+}
+
+async function generate() {
+  const object = document.getElementById('objectInput').value.trim();
+  if (!object) {
+    document.getElementById('objectInput').focus();
+    return;
+  }
+
+  document.getElementById('generateBtn').disabled = true;
+  showLoading();
+
+  try {
+    // ✅ Now calls YOUR server — API key is safe on the server!
+    const response = await fetch("/api/generate", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ object })
+    });
+
+    if (!response.ok) {
+      const errData = await response.json();
+      throw new Error(errData.error || "Server error");
+    }
+
+    const parsed = await response.json();
+
+    // Populate results
+    document.getElementById('scriptContent').textContent = parsed.script || "";
+    document.getElementById('imageContent').textContent = parsed.imagePrompt || "";
+    document.getElementById('ytContent').textContent =
+      "TITLE:\n" + (parsed.youtube?.title || "") +
+      "\n\nDESCRIPTION:\n" + (parsed.youtube?.description || "") +
+      "\n\nHASHTAGS:\n" + (parsed.youtube?.hashtags || "");
+    document.getElementById('igContent').textContent =
+      "CAPTION:\n" + (parsed.instagram?.caption || "") +
+      "\n\nHASHTAGS:\n" + (parsed.instagram?.hashtags || "");
+    document.getElementById('fbContent').textContent =
+      "CAPTION:\n" + (parsed.facebook?.caption || "") +
+      "\n\nHASHTAGS:\n" + (parsed.facebook?.hashtags || "");
+    document.getElementById('ttContent').textContent =
+      "CAPTION:\n" + (parsed.tiktok?.caption || "") +
+      "\n\nHASHTAGS:\n" + (parsed.tiktok?.hashtags || "");
+
+    hideLoading();
+    document.getElementById('results').classList.add('active');
+    document.getElementById('results').scrollIntoView({ behavior: 'smooth', block: 'start' });
+
+  } catch (err) {
+    hideLoading();
+    showError("Something went wrong: " + err.message);
+    console.error(err);
+  }
+
+  document.getElementById('generateBtn').disabled = false;
+}
+
+// Enter key support — works immediately without waiting for DOMContentLoaded since script is at bottom
+document.getElementById('objectInput').addEventListener('keydown', function(e) {
+  if (e.key === 'Enter') generate();
+});
+</script>
+</body>
+</html>
